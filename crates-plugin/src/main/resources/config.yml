@@ -1,0 +1,65 @@
+# Конфиг кейсов Limon Anarchy
+# Каждый кейс — свой набор наград с "весом" (шансом).
+# Чем больше weight у награды относительно суммы всех weight в кейсе — тем чаще она выпадает.
+#
+# type: ITEM     — выдаёт предмет игроку
+# type: COMMAND  — выполняет команду от имени консоли (%player% подставится ник игрока)
+
+crates:
+  vip_crate:
+    display-name: "&6&lVIP Кейс"
+    rewards:
+      - type: ITEM
+        material: DIAMOND
+        amount: 3
+        weight: 30
+        name: "&b3 Алмаза"
+      - type: ITEM
+        material: NETHERITE_INGOT
+        amount: 1
+        weight: 5
+        name: "&5Незеритовый слиток"
+      - type: COMMAND
+        command: "eco give %player% 5000"
+        weight: 40
+        name: "&a5000 монет"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp premium 7d"
+        weight: 5
+        name: "&e&lПремиум на 7 дней"
+      - type: ITEM
+        material: GOLDEN_APPLE
+        amount: 5
+        weight: 20
+        name: "&6Золотые яблоки"
+
+  legendary_crate:
+    display-name: "&d&lЛегендарный Кейс"
+    rewards:
+      - type: COMMAND
+        command: "eco give %player% 20000"
+        weight: 35
+        name: "&a20000 монет"
+      - type: ITEM
+        material: NETHERITE_INGOT
+        amount: 3
+        weight: 15
+        name: "&5&l3 Незеритовых слитка"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp eternity 3d"
+        weight: 10
+        name: "&d&lEternity на 3 дня"
+      - type: ITEM
+        material: TOTEM_OF_UNDYING
+        amount: 1
+        weight: 5
+        name: "&c&lТотем Бессмертия"
+      - type: ITEM
+        material: DIAMOND_BLOCK
+        amount: 2
+        weight: 35
+        name: "&b2 Алмазных блока"
+
+# Сообщение при открытии (публично в чат)
+broadcast-on-open: true
+broadcast-format: "&7[&6Кейсы&7] &e%player% &7открыл &6%crate% &7и получил: &f%reward%"
