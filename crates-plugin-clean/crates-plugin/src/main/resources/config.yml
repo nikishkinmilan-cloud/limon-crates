@@ -1,0 +1,45 @@
+crates:
+  donate_crate:
+    display-name: "&6&lДонат Кейс"
+    rewards:
+      - type: COMMAND
+        command: "eco give %player% 3000"
+        weight: 70
+        name: "&a3000 монет"
+      - type: ITEM
+        material: DIAMOND
+        amount: 2
+        weight: 40
+        name: "&b2 Алмаза"
+      - type: ITEM
+        material: GOLDEN_APPLE
+        amount: 3
+        weight: 30
+        name: "&6Золотые яблоки"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp kraken 25d"
+        weight: 24
+        name: "&a&lKraken на 25 дней"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp stinger 25d"
+        weight: 16
+        name: "&e&lStinger на 25 дней"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp premium 25d"
+        weight: 10
+        name: "&e&lПремиум на 25 дней"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp eternity 15d"
+        weight: 6
+        name: "&d&lEternity на 15 дней"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp sponsor 15d"
+        weight: 3
+        name: "&5&lСпонсор на 15 дней"
+      - type: COMMAND
+        command: "lp user %player% parent addtemp prince 15d"
+        weight: 1
+        name: "&b&lПринц на 15 дней"
+
+broadcast-on-open: true
+broadcast-format: "&7[&6Кейсы&7] &e%player% &7открыл &6%crate% &7и получил: &f%reward%"

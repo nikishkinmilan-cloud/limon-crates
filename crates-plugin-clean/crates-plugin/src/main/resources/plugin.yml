@@ -1,0 +1,26 @@
+name: LimonCrates
+version: '1.0.0'
+main: com.limonanarchy.crates.CratesPlugin
+api-version: '1.21'
+author: Stanislav
+description: Система донат-кейсов для Limon Anarchy
+
+commands:
+  cratekey:
+    description: Выдать/забрать ключи от кейса
+    usage: /cratekey give <игрок> <кейс> <количество>
+    permission: crates.admin
+  crate:
+    description: Открыть кейс ключом из руки
+    usage: /crate open <кейс>
+  crates:
+    description: Список доступных кейсов / перезагрузка конфига
+    usage: /crates list | /crates reload
+
+permissions:
+  crates.admin:
+    description: Доступ к выдаче ключей и управлению кейсами
+    default: op
+  crates.open:
+    description: Разрешение открывать кейсы
+    default: true
