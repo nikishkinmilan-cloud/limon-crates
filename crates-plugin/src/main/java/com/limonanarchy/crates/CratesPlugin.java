@@ -13,7 +13,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.action.Action;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -134,3 +134,43 @@ public class CratesPlugin extends JavaPlugin implements Listener {
             return true;
         }
         if (args.length < 3 || !args[0].equalsIgnoreCase("give")) {
+            sender.sendMessage(ChatColor.YELLOW + "Использование: /cratekey give <игрок> <кейс> [количество]");
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(ChatColor.RED + "Игрок " + args[1] + " не найден (должен быть онлайн).");
+            return true;
+        }
+
+        String crateId = args[2];
+        ConfigurationSection crateSection = getConfig().getConfigurationSection("crates." + crateId);
+        if (crateSection == null) {
+            sender.sendMessage(ChatColor.RED + "Кейс '" + crateId + "' не найден в config.yml.");
+            return true;
+        }
+
+        int amount = 1;
+        if (args.length >= 4) {
+            try {
+                amount = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                sender.sendMessage(ChatColor.RED + "Количество должно быть числом.");
+                return true;
+            }
+        }
+
+        ItemStack key = createKeyItem(crateId, crateSection.getString("display-name", crateId), amount);
+        target.getInventory().addItem(key);
+
+        sender.sendMessage(ChatColor.GREEN + "Выдано " + amount + " ключ(ей) от '" + crateId + "' игроку " + target.getName());
+        target.sendMessage(ChatColor.GREEN + "Тебе выдано " + amount + " ключ(ей) от " + ChatColor.translateAlternateColorCodes('&', crateSection.getString("display-name", crateId)));
+        return true;
+    }
+
+    private ItemStack createKeyItem(String crateId, String displayName, int amount) {
+        ItemStack item = new ItemStack(Material.TRIPWIRE_HOOK, amount);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', "&f&lКлюч: " + displayName));
+        List<String>
