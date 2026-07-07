@@ -27,26 +27,61 @@ combat:
   check-line-of-sight: true
   violation-weight: 2
 
+noslow:
+  enabled: true
+  # макс. скорость при блокировании щитом/еде/натягивании лука (ваниль замедляет игрока)
+  max-speed-while-using-item: 0.22
+  violation-weight: 1
+
+autoclicker:
+  enabled: true
+  # человеческий предел CPS (кликов в секунду) на длинной дистанции - выше considered читом
+  max-legit-cps: 14
+  # минимальный разброс интервалов между кликами (мс) - ниже = подозрительно ровный ритм (макрос)
+  min-stddev-ms: 15
+  violation-weight: 2
+
+scaffold:
+  enabled: true
+  # минимальный интервал между установкой блоков (мс) при взгляде вниз
+  min-place-interval-ms: 110
+  # угол наклона камеры вниз (градусы), после которого считаем что игрок строит мост под собой
+  min-pitch-looking-down: 70
+  violation-weight: 1
+
+nofall:
+  enabled: true
+  # минимальная высота падения (блоков), после которой урон ОБЯЗАН быть
+  min-fall-distance: 4.0
+  violation-weight: 2
+
 # что делать при накоплении нарушений
 punishment:
   # уровень, при котором стафф получает РАННЕЕ уведомление "подозрение в читах"
-  # (до алерта и до кика - чтобы успеть зайти /spec и проверить лично)
-  suspicion-threshold: 3
+  # (до алерта - чтобы успеть зайти /spec и проверить лично)
+  suspicion-threshold: 4
   # сколько нарушений (violation level) до полноценного алерта персоналу
-  alert-threshold: 5
-  # сколько нарушений до автокика
-  kick-threshold: 15
-  # сколько нарушений до автобана (0 = отключено, банить руками после ручной проверки)
-  ban-threshold: 0
+  alert-threshold: 8
+  # сколько нарушений до "серьёзного" алерта (мигающий, привлекающий внимание)
+  serious-threshold: 20
+  # ВКЛЮЧАТЬ ЛИ автоматический кик игрока - по умолчанию ВЫКЛЮЧЕНО.
+  # Античит только следит и репортит стаффу, финальное решение - за живым человеком через /spec.
+  # Это и есть подход топовых серверов: софт не наказывает сам, только помогает найти нарушителя.
+  auto-kick-enabled: false
+  kick-threshold: 30
+  # автобан - по умолчанию тоже выключен, банить руками после личной проверки через /spec
+  auto-ban-enabled: false
+  ban-threshold: 50
   # время в секундах, через которое уровень нарушений постепенно спадает (anti-false-positive)
-  decay-interval-seconds: 60
-  decay-amount: 1
+  decay-interval-seconds: 45
+  decay-amount: 2
 
 alerts:
   # право, которое должно быть у стаффа чтобы видеть алерты
   permission: anticheat.admin
   suspicion-message: "&e⚠ &f%player% &7ведёт себя подозрительно &7(&e%check%&7). Проверь: &f/spec %player%"
-  message: "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7)"
+  message: "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7) &7- &f/spec %player%"
+  serious-message: "&4&l⛔ СЕРЬЁЗНОЕ ПОДОЗРЕНИЕ &c%player% &7(&e%check%&7, уровень &c%level%&7) &f/spec %player% §cСРОЧНО"
 
 # Контакт для апелляций при бане (показывается на экране кика)
 ban-appeal-contact: "Telegram: @Milan4ck3456"

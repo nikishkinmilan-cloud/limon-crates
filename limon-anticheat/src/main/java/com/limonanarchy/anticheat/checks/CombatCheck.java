@@ -43,6 +43,7 @@ public class CombatCheck implements Listener {
         if (!(event.getDamager() instanceof Player player)) return;
         if (!(event.getEntity() instanceof LivingEntity target)) return;
         if (player.hasPermission("anticheat.bypass")) return;
+        if (ExemptionTracker.isExempt(player)) return;
 
         int weight = plugin.getConfig().getInt("combat.violation-weight", 2);
 

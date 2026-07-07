@@ -7,22 +7,24 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
+/**
+ * Философия: античит НЕ наказывает игроков сам по себе (это даёт слишком много ложных
+ * банов из-за лагов/двух аккаунтов в одной сети/плохого интернета). Вместо этого он
+ * копит статистику подозрительного поведения и репортит живому стаффу, который
+ * сам принимает решение через /spec. Именно так работают топовые анархии -
+ * софт помогает найти нарушителя, а не банит вслепую.
+ */
 public class ViolationManager {
 
     private final AntiCheatPlugin plugin;
     private final Map<String, Integer> violations = new ConcurrentHashMap<>();
-    // чтобы не спамить "подозрение" каждый тик - шлём один раз, пока уровень не сбросится ниже порога
-    private final Map<String, Boolean> suspicionSent = new ConcurrentHashMap<>();
+    // чтобы не спамить одно и то же уведомление каждый тик - шлём раз за уровень, пока не сбросится
+    private final Map<String, Integer> lastNotifiedLevel = new ConcurrentHashMap<>();
 
     public ViolationManager(AntiCheatPlugin plugin) {
         this.plugin = plugin;
     }
 
-    /**
-     * Регистрирует нарушение для игрока по конкретной проверке.
-     * Если бы игрок мог обойти какую-то проверку - весь смысл в накоплении:
-     * одно случайное срабатывание (лаг) не банит никого, только систематическое поведение.
-     */
     public void flag(Player player, String checkName, int weight) {
         if (player.hasPermission("anticheat.bypass")) {
             return;
@@ -31,37 +33,46 @@ public class ViolationManager {
         String key = player.getUniqueId().toString();
         int newLevel = violations.merge(key, weight, Integer::sum);
 
-        int suspicionThreshold = plugin.getConfig().getInt("punishment.suspicion-threshold", 3);
-        int alertThreshold = plugin.getConfig().getInt("punishment.alert-threshold", 5);
-        int kickThreshold = plugin.getConfig().getInt("punishment.kick-threshold", 15);
-        int banThreshold = plugin.getConfig().getInt("punishment.ban-threshold", 0);
+        int suspicionThreshold = plugin.getConfig().getInt("punishment.suspicion-threshold", 4);
+        int alertThreshold = plugin.getConfig().getInt("punishment.alert-threshold", 8);
+        int seriousThreshold = plugin.getConfig().getInt("punishment.serious-threshold", 20);
 
         if (plugin.getConfig().getBoolean("log-to-console", true)) {
             plugin.getLogger().info(player.getName() + " -> " + checkName + " (level=" + newLevel + ")");
         }
 
-        // Раннее уведомление "ведёт себя подозрительно" - один раз, чтобы стафф успел /spec
-        if (newLevel >= suspicionThreshold && newLevel < alertThreshold
-                && !suspicionSent.getOrDefault(key, false)) {
-            broadcastSuspicion(player, checkName);
-            suspicionSent.put(key, true);
-        }
+        int lastNotified = lastNotifiedLevel.getOrDefault(key, 0);
 
-        if (newLevel >= alertThreshold) {
+        // Шлём уведомление только когда пересекли НОВЫЙ порог (не спамим на каждый +1)
+        if (newLevel >= seriousThreshold && lastNotified < seriousThreshold) {
+            broadcastSerious(player, checkName, newLevel);
+            lastNotifiedLevel.put(key, newLevel);
+        } else if (newLevel >= alertThreshold && lastNotified < alertThreshold) {
             broadcastAlert(player, checkName, newLevel);
+            lastNotifiedLevel.put(key, newLevel);
+        } else if (newLevel >= suspicionThreshold && lastNotified < suspicionThreshold) {
+            broadcastSuspicion(player, checkName);
+            lastNotifiedLevel.put(key, newLevel);
         }
 
-        if (banThreshold > 0 && newLevel >= banThreshold) {
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                player.kickPlayer("§cВы были заблокированы античитом. Обратитесь к администрации.");
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                        "ban " + player.getName() + " Автобан античитом (" + checkName + ")");
-            });
+        // Автонаказания - ВЫКЛЮЧЕНЫ по умолчанию, только если явно включены в конфиге.
+        // По умолчанию решение всегда принимает живой человек через /spec + /ac ban.
+        boolean autoKick = plugin.getConfig().getBoolean("punishment.auto-kick-enabled", false);
+        boolean autoBan = plugin.getConfig().getBoolean("punishment.auto-ban-enabled", false);
+        int kickThreshold = plugin.getConfig().getInt("punishment.kick-threshold", 30);
+        int banThreshold = plugin.getConfig().getInt("punishment.ban-threshold", 50);
+
+        if (autoBan && newLevel >= banThreshold) {
+            Bukkit.getScheduler().runTask(plugin, () ->
+                    player.kickPlayer("§cВы были заблокированы античитом. Обратитесь к администрации."));
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
+                    "ban " + player.getName() + " Автобан античитом (" + checkName + ")");
             violations.remove(key);
-        } else if (newLevel >= kickThreshold) {
+            lastNotifiedLevel.remove(key);
+        } else if (autoKick && newLevel >= kickThreshold) {
             Bukkit.getScheduler().runTask(plugin, () ->
                     player.kickPlayer("§cПодозрительная активность обнаружена (" + checkName + "). Перезайдите на сервер."));
-            violations.put(key, kickThreshold / 2); // не обнуляем полностью, чтобы рецидив копился быстрее
+            violations.put(key, kickThreshold / 2);
         }
     }
 
@@ -70,35 +81,43 @@ public class ViolationManager {
         String template = plugin.getConfig().getString("alerts.suspicion-message",
                 "&e⚠ &f%player% &7ведёт себя подозрительно &7(&e%check%&7). Проверь: &f/spec %player%");
 
-        String message = template
-                .replace("%player%", player.getName())
-                .replace("%check%", checkName)
-                .replace('&', '§');
-
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.hasPermission(permission)) {
-                online.sendMessage(message);
-            }
-        }
+        broadcast(permission, format(template, player, checkName, 0));
     }
 
     private void broadcastAlert(Player player, String checkName, int level) {
         String permission = plugin.getConfig().getString("alerts.permission", "anticheat.admin");
         String template = plugin.getConfig().getString("alerts.message",
-                "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7)");
+                "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7) &7- &f/spec %player%");
 
-        String message = template
+        String message = format(template, player, checkName, level);
+        broadcast(permission, message);
+        Bukkit.getConsoleSender().sendMessage(message);
+    }
+
+    private void broadcastSerious(Player player, String checkName, int level) {
+        String permission = plugin.getConfig().getString("alerts.permission", "anticheat.admin");
+        String template = plugin.getConfig().getString("alerts.serious-message",
+                "&4&l⛔ СЕРЬЁЗНОЕ ПОДОЗРЕНИЕ &c%player% &7(&e%check%&7, уровень &c%level%&7) &f/spec %player% §cСРОЧНО");
+
+        String message = format(template, player, checkName, level);
+        broadcast(permission, message);
+        Bukkit.getConsoleSender().sendMessage(message);
+    }
+
+    private String format(String template, Player player, String checkName, int level) {
+        return template
                 .replace("%player%", player.getName())
                 .replace("%check%", checkName)
                 .replace("%level%", String.valueOf(level))
                 .replace('&', '§');
+    }
 
+    private void broadcast(String permission, String message) {
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online.hasPermission(permission)) {
                 online.sendMessage(message);
             }
         }
-        Bukkit.getConsoleSender().sendMessage(message);
     }
 
     public int getViolationLevel(String playerName) {
@@ -109,11 +128,11 @@ public class ViolationManager {
 
     /**
      * Постепенное снижение уровня нарушений со временем,
-     * чтобы не банить игроков за старые случайные лаг-спайки.
+     * чтобы случайные лаг-спайки не копились вечно.
      */
     public void startDecayTask() {
-        long interval = plugin.getConfig().getLong("punishment.decay-interval-seconds", 60) * 20L;
-        int decayAmount = plugin.getConfig().getInt("punishment.decay-amount", 1);
+        long interval = plugin.getConfig().getLong("punishment.decay-interval-seconds", 45) * 20L;
+        int decayAmount = plugin.getConfig().getInt("punishment.decay-amount", 2);
 
         new BukkitRunnable() {
             @Override
@@ -121,8 +140,14 @@ public class ViolationManager {
                 violations.replaceAll((k, v) -> Math.max(0, v - decayAmount));
                 violations.entrySet().removeIf(e -> {
                     boolean zero = e.getValue() <= 0;
-                    if (zero) suspicionSent.remove(e.getKey());
+                    if (zero) lastNotifiedLevel.remove(e.getKey());
                     return zero;
+                });
+                lastNotifiedLevel.forEach((k, v) -> {
+                    int current = violations.getOrDefault(k, 0);
+                    if (current < v) {
+                        lastNotifiedLevel.put(k, current);
+                    }
                 });
             }
         }.runTaskTimer(plugin, interval, interval);

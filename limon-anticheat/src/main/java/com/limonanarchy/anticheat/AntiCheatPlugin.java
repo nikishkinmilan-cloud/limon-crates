@@ -3,8 +3,13 @@ package com.limonanarchy.anticheat;
 import com.limonanarchy.anticheat.bans.BanEntry;
 import com.limonanarchy.anticheat.bans.BanLoginListener;
 import com.limonanarchy.anticheat.bans.BanManager;
+import com.limonanarchy.anticheat.checks.AutoClickerCheck;
 import com.limonanarchy.anticheat.checks.CombatCheck;
+import com.limonanarchy.anticheat.checks.ExemptionListener;
 import com.limonanarchy.anticheat.checks.FlyCheck;
+import com.limonanarchy.anticheat.checks.NoFallCheck;
+import com.limonanarchy.anticheat.checks.NoSlowCheck;
+import com.limonanarchy.anticheat.checks.ScaffoldCheck;
 import com.limonanarchy.anticheat.checks.SpeedCheck;
 import com.limonanarchy.anticheat.commands.ReportCommand;
 import com.limonanarchy.anticheat.commands.ReportsCommand;
@@ -22,6 +27,10 @@ public class AntiCheatPlugin extends JavaPlugin {
     private FlyCheck flyCheck;
     private SpeedCheck speedCheck;
     private CombatCheck combatCheck;
+    private NoSlowCheck noSlowCheck;
+    private AutoClickerCheck autoClickerCheck;
+    private ScaffoldCheck scaffoldCheck;
+    private NoFallCheck noFallCheck;
     private ReportManager reportManager;
     private BanManager banManager;
 
@@ -36,11 +45,20 @@ public class AntiCheatPlugin extends JavaPlugin {
         this.flyCheck = new FlyCheck(this, violationManager);
         this.speedCheck = new SpeedCheck(this, violationManager);
         this.combatCheck = new CombatCheck(this, violationManager);
+        this.noSlowCheck = new NoSlowCheck(this, violationManager);
+        this.autoClickerCheck = new AutoClickerCheck(this, violationManager);
+        this.scaffoldCheck = new ScaffoldCheck(this, violationManager);
+        this.noFallCheck = new NoFallCheck(this, violationManager);
 
         getServer().getPluginManager().registerEvents(flyCheck, this);
         getServer().getPluginManager().registerEvents(speedCheck, this);
         getServer().getPluginManager().registerEvents(combatCheck, this);
+        getServer().getPluginManager().registerEvents(noSlowCheck, this);
+        getServer().getPluginManager().registerEvents(autoClickerCheck, this);
+        getServer().getPluginManager().registerEvents(scaffoldCheck, this);
+        getServer().getPluginManager().registerEvents(noFallCheck, this);
         getServer().getPluginManager().registerEvents(new BanLoginListener(banManager), this);
+        getServer().getPluginManager().registerEvents(new ExemptionListener(), this);
 
         getCommand("report").setExecutor(new ReportCommand(this, reportManager));
         getCommand("reports").setExecutor(new ReportsCommand(reportManager));

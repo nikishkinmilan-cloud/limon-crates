@@ -78,6 +78,12 @@ public class FlyCheck implements Listener {
             return;
         }
 
+        // 6. Временное исключение после урона/телепорта/респавна
+        if (ExemptionTracker.isExempt(player)) {
+            airTicks.remove(key);
+            return;
+        }
+
         // --- Собственно проверка ---
 
         double currentY = player.getLocation().getY();

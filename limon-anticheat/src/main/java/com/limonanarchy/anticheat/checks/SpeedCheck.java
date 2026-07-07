@@ -13,14 +13,22 @@ import java.util.Map;
 
 /**
  * Ловит превышение скорости горизонтального движения (speed-хаки).
- * Автоматически учитывает: эффект Speed (зелье), спринт, элитру, коня/лодку.
+ *
+ * ВАЖНО: не флагает по одному "быстрому" тику - лаги/скачки пинга (особенно при
+ * нескольких аккаунтах на одном интернете) регулярно дают одиночные всплески.
+ * Вместо этого считаем СРЕДНЮЮ скорость за несколько последних тиков (окно),
+ * и флагаем только если превышение стабильно держится, а не разово скакнуло.
  */
 public class SpeedCheck implements Listener {
 
     private final AntiCheatPlugin plugin;
     private final ViolationManager violationManager;
 
-    private final Map<String, org.bukkit.Location> lastLocation = new ConcurrentHashMap<>();
+    // Скользящее окно последних дистанций по игроку - сглаживает единичные лаг-спайки
+    private final Map<String, double[]> recentDistances = new ConcurrentHashMap<>();
+    private static final int WINDOW_SIZE = 10;
+    private final Map<String, Integer> windowIndex = new ConcurrentHashMap<>();
+    private final Map<String, Integer> excessStreak = new ConcurrentHashMap<>();
 
     public SpeedCheck(AntiCheatPlugin plugin, ViolationManager violationManager) {
         this.plugin = plugin;
@@ -34,17 +42,17 @@ public class SpeedCheck implements Listener {
         Player player = event.getPlayer();
         String key = player.getUniqueId().toString();
 
-        // Исключения: полёт, элитра, транспорт (лошадь/лодка/повозка) - там своя скорость
         if (player.getAllowFlight() || player.isFlying() || player.isGliding()
-                || player.isInsideVehicle() || player.hasPermission("anticheat.bypass")) {
-            lastLocation.remove(key);
+                || player.isInsideVehicle() || player.hasPermission("anticheat.bypass")
+                || ExemptionTracker.isExempt(player)) {
+            recentDistances.remove(key);
             return;
         }
 
         var from = event.getFrom();
         var to = event.getTo();
         if (to == null || !from.getWorld().equals(to.getWorld())) {
-            lastLocation.remove(key);
+            recentDistances.remove(key);
             return;
         }
 
@@ -56,18 +64,35 @@ public class SpeedCheck implements Listener {
                 ? plugin.getConfig().getDouble("speed.max-sprint-speed", 0.42)
                 : plugin.getConfig().getDouble("speed.max-walk-speed", 0.32);
 
-        // Учитываем эффект Speed - каждый уровень добавляет ~20% скорости
         if (player.hasPotionEffect(PotionEffectType.SPEED)) {
             int amplifier = player.getPotionEffect(PotionEffectType.SPEED).getAmplifier() + 1;
             maxAllowed *= (1 + 0.2 * amplifier);
         }
 
-        // Небольшой запас на погрешность сети/тиков (лаг может дать ложный скачок один раз)
-        maxAllowed *= 1.15;
+        // Хороший запас на погрешность сети - топовые античиты тоже не режут впритык
+        maxAllowed *= 1.25;
 
-        if (horizontalDistance > maxAllowed) {
-            int weight = plugin.getConfig().getInt("speed.violation-weight", 1);
-            violationManager.flag(player, "SpeedCheck", weight);
+        // Считаем среднюю скорость за последние WINDOW_SIZE тиков
+        double[] window = recentDistances.computeIfAbsent(key, k -> new double[WINDOW_SIZE]);
+        int idx = windowIndex.merge(key, 1, (a, b) -> (a + 1) % WINDOW_SIZE) - 1;
+        if (idx < 0) idx = WINDOW_SIZE - 1;
+        window[idx] = horizontalDistance;
+
+        double average = 0;
+        for (double d : window) average += d;
+        average /= WINDOW_SIZE;
+
+        if (average > maxAllowed) {
+            int streak = excessStreak.merge(key, 1, Integer::sum);
+            // Флагаем только если превышение держится стабильно несколько раз подряд,
+            // а не одно случайное колебание
+            if (streak >= 5) {
+                int weight = plugin.getConfig().getInt("speed.violation-weight", 1);
+                violationManager.flag(player, "SpeedCheck", weight);
+                excessStreak.put(key, 0);
+            }
+        } else {
+            excessStreak.put(key, 0);
         }
     }
 }
