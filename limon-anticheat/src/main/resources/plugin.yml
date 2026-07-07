@@ -1,0 +1,34 @@
+name: LimonAntiCheat
+version: 1.0.0
+main: com.limonanarchy.anticheat.AntiCheatPlugin
+api-version: '1.21'
+author: LimonAnarchy
+commands:
+  ac:
+    description: Anticheat admin commands
+    permission: anticheat.admin
+    usage: /ac <reload|violations|ban>
+    aliases: [anticheat]
+  report:
+    description: Пожаловаться на игрока
+    permission: report.use
+    usage: /report <ник> <причина>
+  reports:
+    description: Посмотреть список репортов
+    permission: reports.view
+    usage: /reports
+  spec:
+    description: Спектейтор-слежка за игроком
+    permission: spec.use
+    usage: /spec <ник|off>
+permissions:
+  anticheat.admin:
+    default: op
+  anticheat.bypass:
+    default: false
+  report.use:
+    default: true
+  reports.view:
+    default: op
+  spec.use:
+    default: op
