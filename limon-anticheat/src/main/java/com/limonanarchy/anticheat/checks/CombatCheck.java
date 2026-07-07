@@ -47,15 +47,25 @@ public class CombatCheck implements Listener {
 
         int weight = plugin.getConfig().getInt("combat.violation-weight", 2);
 
+        double maxReach = plugin.getConfig().getDouble("combat.max-reach", 4.2);
+        double maxAngle = plugin.getConfig().getDouble("combat.max-angle-degrees", 60);
+
+        if (plugin.getConfig().getBoolean("version-compat.enabled", true)) {
+            int legacyThreshold = plugin.getConfig().getInt("version-compat.legacy-protocol-threshold", 767);
+            if (com.limonanarchy.anticheat.ClientVersionUtil.isLegacyClient(player, legacyThreshold)) {
+                double leniency = plugin.getConfig().getDouble("version-compat.leniency-multiplier", 1.3);
+                maxReach *= leniency;
+                maxAngle *= leniency;
+            }
+        }
+
         // --- 1. Проверка дистанции (reach) ---
         double distance = player.getEyeLocation().distance(target.getEyeLocation());
-        double maxReach = plugin.getConfig().getDouble("combat.max-reach", 4.2);
         if (distance > maxReach) {
             violationManager.flag(player, "CombatCheck-Reach", weight);
         }
 
         // --- 2. Проверка угла обзора (бьёт ли игрок туда, куда смотрит) ---
-        double maxAngle = plugin.getConfig().getDouble("combat.max-angle-degrees", 60);
         Vector toTarget = target.getEyeLocation().toVector()
                 .subtract(player.getEyeLocation().toVector()).normalize();
         Vector lookDirection = player.getEyeLocation().getDirection().normalize();

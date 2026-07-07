@@ -69,6 +69,14 @@ public class SpeedCheck implements Listener {
             maxAllowed *= (1 + 0.2 * amplifier);
         }
 
+        // Смягчение для игроков со старых версий клиента (1.16.5-1.20 через ViaVersion)
+        if (plugin.getConfig().getBoolean("version-compat.enabled", true)) {
+            int legacyThreshold = plugin.getConfig().getInt("version-compat.legacy-protocol-threshold", 767);
+            if (com.limonanarchy.anticheat.ClientVersionUtil.isLegacyClient(player, legacyThreshold)) {
+                maxAllowed *= plugin.getConfig().getDouble("version-compat.leniency-multiplier", 1.3);
+            }
+        }
+
         // Хороший запас на погрешность сети - топовые античиты тоже не режут впритык
         maxAllowed *= 1.25;
 

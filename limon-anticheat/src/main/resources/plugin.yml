@@ -3,6 +3,7 @@ version: 1.0.0
 main: com.limonanarchy.anticheat.AntiCheatPlugin
 api-version: '1.21'
 author: LimonAnarchy
+softdepend: [ViaVersion, ViaBackwards]
 commands:
   ac:
     description: Anticheat admin commands

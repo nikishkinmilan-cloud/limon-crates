@@ -43,6 +43,13 @@ public class NoSlowCheck implements Listener {
         // Ванильное замедление при использовании предмета - примерно 0.2 блока/тик максимум
         double maxAllowedWhileUsingItem = plugin.getConfig().getDouble("noslow.max-speed-while-using-item", 0.22);
 
+        if (plugin.getConfig().getBoolean("version-compat.enabled", true)) {
+            int legacyThreshold = plugin.getConfig().getInt("version-compat.legacy-protocol-threshold", 767);
+            if (com.limonanarchy.anticheat.ClientVersionUtil.isLegacyClient(player, legacyThreshold)) {
+                maxAllowedWhileUsingItem *= plugin.getConfig().getDouble("version-compat.leniency-multiplier", 1.3);
+            }
+        }
+
         if (horizontalDistance > maxAllowedWhileUsingItem) {
             int weight = plugin.getConfig().getInt("noslow.violation-weight", 1);
             violationManager.flag(player, "NoSlowCheck", weight);
