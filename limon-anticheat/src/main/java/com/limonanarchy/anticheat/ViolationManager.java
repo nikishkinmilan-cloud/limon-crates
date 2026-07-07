@@ -11,6 +11,8 @@ public class ViolationManager {
 
     private final AntiCheatPlugin plugin;
     private final Map<String, Integer> violations = new ConcurrentHashMap<>();
+    // чтобы не спамить "подозрение" каждый тик - шлём один раз, пока уровень не сбросится ниже порога
+    private final Map<String, Boolean> suspicionSent = new ConcurrentHashMap<>();
 
     public ViolationManager(AntiCheatPlugin plugin) {
         this.plugin = plugin;
@@ -29,12 +31,20 @@ public class ViolationManager {
         String key = player.getUniqueId().toString();
         int newLevel = violations.merge(key, weight, Integer::sum);
 
+        int suspicionThreshold = plugin.getConfig().getInt("punishment.suspicion-threshold", 3);
         int alertThreshold = plugin.getConfig().getInt("punishment.alert-threshold", 5);
         int kickThreshold = plugin.getConfig().getInt("punishment.kick-threshold", 15);
         int banThreshold = plugin.getConfig().getInt("punishment.ban-threshold", 0);
 
         if (plugin.getConfig().getBoolean("log-to-console", true)) {
             plugin.getLogger().info(player.getName() + " -> " + checkName + " (level=" + newLevel + ")");
+        }
+
+        // Раннее уведомление "ведёт себя подозрительно" - один раз, чтобы стафф успел /spec
+        if (newLevel >= suspicionThreshold && newLevel < alertThreshold
+                && !suspicionSent.getOrDefault(key, false)) {
+            broadcastSuspicion(player, checkName);
+            suspicionSent.put(key, true);
         }
 
         if (newLevel >= alertThreshold) {
@@ -52,6 +62,23 @@ public class ViolationManager {
             Bukkit.getScheduler().runTask(plugin, () ->
                     player.kickPlayer("§cПодозрительная активность обнаружена (" + checkName + "). Перезайдите на сервер."));
             violations.put(key, kickThreshold / 2); // не обнуляем полностью, чтобы рецидив копился быстрее
+        }
+    }
+
+    private void broadcastSuspicion(Player player, String checkName) {
+        String permission = plugin.getConfig().getString("alerts.permission", "anticheat.admin");
+        String template = plugin.getConfig().getString("alerts.suspicion-message",
+                "&e⚠ &f%player% &7ведёт себя подозрительно &7(&e%check%&7). Проверь: &f/spec %player%");
+
+        String message = template
+                .replace("%player%", player.getName())
+                .replace("%check%", checkName)
+                .replace('&', '§');
+
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.hasPermission(permission)) {
+                online.sendMessage(message);
+            }
         }
     }
 
@@ -92,7 +119,11 @@ public class ViolationManager {
             @Override
             public void run() {
                 violations.replaceAll((k, v) -> Math.max(0, v - decayAmount));
-                violations.values().removeIf(v -> v <= 0);
+                violations.entrySet().removeIf(e -> {
+                    boolean zero = e.getValue() <= 0;
+                    if (zero) suspicionSent.remove(e.getKey());
+                    return zero;
+                });
             }
         }.runTaskTimer(plugin, interval, interval);
     }

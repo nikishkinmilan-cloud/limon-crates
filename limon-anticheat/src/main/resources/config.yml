@@ -29,7 +29,10 @@ combat:
 
 # что делать при накоплении нарушений
 punishment:
-  # сколько нарушений (violation level) до предупреждения персонала
+  # уровень, при котором стафф получает РАННЕЕ уведомление "подозрение в читах"
+  # (до алерта и до кика - чтобы успеть зайти /spec и проверить лично)
+  suspicion-threshold: 3
+  # сколько нарушений (violation level) до полноценного алерта персоналу
   alert-threshold: 5
   # сколько нарушений до автокика
   kick-threshold: 15
@@ -42,6 +45,10 @@ punishment:
 alerts:
   # право, которое должно быть у стаффа чтобы видеть алерты
   permission: anticheat.admin
+  suspicion-message: "&e⚠ &f%player% &7ведёт себя подозрительно &7(&e%check%&7). Проверь: &f/spec %player%"
   message: "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7)"
+
+# Контакт для апелляций при бане (показывается на экране кика)
+ban-appeal-contact: "Telegram: @Milan4ck3456"
 
 log-to-console: true

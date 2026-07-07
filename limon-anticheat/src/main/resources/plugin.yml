@@ -7,7 +7,7 @@ commands:
   ac:
     description: Anticheat admin commands
     permission: anticheat.admin
-    usage: /ac <reload|violations|ban>
+    usage: /ac <reload|violations|ban|unban>
     aliases: [anticheat]
   report:
     description: Пожаловаться на игрока

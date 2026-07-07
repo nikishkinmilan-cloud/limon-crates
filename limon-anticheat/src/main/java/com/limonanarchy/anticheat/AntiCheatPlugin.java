@@ -1,5 +1,8 @@
 package com.limonanarchy.anticheat;
 
+import com.limonanarchy.anticheat.bans.BanEntry;
+import com.limonanarchy.anticheat.bans.BanLoginListener;
+import com.limonanarchy.anticheat.bans.BanManager;
 import com.limonanarchy.anticheat.checks.CombatCheck;
 import com.limonanarchy.anticheat.checks.FlyCheck;
 import com.limonanarchy.anticheat.checks.SpeedCheck;
@@ -20,6 +23,7 @@ public class AntiCheatPlugin extends JavaPlugin {
     private SpeedCheck speedCheck;
     private CombatCheck combatCheck;
     private ReportManager reportManager;
+    private BanManager banManager;
 
     @Override
     public void onEnable() {
@@ -27,6 +31,7 @@ public class AntiCheatPlugin extends JavaPlugin {
 
         this.violationManager = new ViolationManager(this);
         this.reportManager = new ReportManager(this);
+        this.banManager = new BanManager(this);
 
         this.flyCheck = new FlyCheck(this, violationManager);
         this.speedCheck = new SpeedCheck(this, violationManager);
@@ -35,6 +40,7 @@ public class AntiCheatPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(flyCheck, this);
         getServer().getPluginManager().registerEvents(speedCheck, this);
         getServer().getPluginManager().registerEvents(combatCheck, this);
+        getServer().getPluginManager().registerEvents(new BanLoginListener(banManager), this);
 
         getCommand("report").setExecutor(new ReportCommand(this, reportManager));
         getCommand("reports").setExecutor(new ReportsCommand(reportManager));
@@ -60,7 +66,7 @@ public class AntiCheatPlugin extends JavaPlugin {
         }
 
         if (args.length == 0) {
-            sender.sendMessage("§eИспользование: /ac <reload|violations|ban>");
+            sender.sendMessage("§eИспользование: /ac <reload|violations|ban|unban>");
             return true;
         }
 
@@ -78,15 +84,23 @@ public class AntiCheatPlugin extends JavaPlugin {
                 sender.sendMessage("§eУровень нарушений §f" + args[1] + "§e: §c" + level);
                 break;
             case "ban":
-                if (args.length < 2) {
-                    sender.sendMessage("§eИспользование: /ac ban <ник> [причина]");
+                if (args.length < 3) {
+                    sender.sendMessage("§eИспользование: /ac ban <ник> <время> <причина>");
+                    sender.sendMessage("§7Время: §f7d §7(7 дней), §f12h §7(12 часов), §f30m §7(30 минут), §fperm §7(навсегда)");
                     return true;
                 }
+
                 String targetName = args[1];
-                Player target = Bukkit.getPlayerExact(targetName);
+                String durationInput = args[2];
+
+                Long expiresAt = banManager.parseDuration(durationInput);
+                if (expiresAt == null) {
+                    sender.sendMessage("§cНекорректный формат времени. Примеры: 7d, 12h, 30m, perm");
+                    return true;
+                }
 
                 StringBuilder reasonBuilder = new StringBuilder();
-                for (int i = 2; i < args.length; i++) {
+                for (int i = 3; i < args.length; i++) {
                     reasonBuilder.append(args[i]).append(" ");
                 }
                 String reason = reasonBuilder.toString().trim();
@@ -94,25 +108,36 @@ public class AntiCheatPlugin extends JavaPlugin {
                     reason = "Обнаружен читерский софт (LimonAntiCheat)";
                 }
 
-                final String finalReason = reason;
-                if (target != null) {
-                    target.kickPlayer("§cВы забанены античитом.\n§7Причина: " + finalReason);
+                banManager.ban(targetName, reason, sender.getName(), expiresAt);
+
+                BanEntry newBan = banManager.getBan(targetName);
+                Player target = Bukkit.getPlayerExact(targetName);
+                if (target != null && newBan != null) {
+                    target.kickPlayer(banManager.buildKickScreen(newBan));
                 }
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                        "ban " + targetName + " " + finalReason);
 
-                sender.sendMessage("§a" + targetName + " §fзабанен через античит. §7(" + finalReason + ")");
+                String durationText = expiresAt == -1 ? "навсегда" : "до " + banManager.formatDuration(expiresAt - System.currentTimeMillis());
+                sender.sendMessage("§a" + targetName + " §fзабанен (" + durationText + "). §7Причина: " + reason);
 
-                // уведомляем стафф
                 for (Player online : Bukkit.getOnlinePlayers()) {
                     if (online.hasPermission("anticheat.admin") && !online.equals(sender)) {
                         online.sendMessage("§c[AC] §f" + sender.getName() + " §7забанил §f" + targetName
-                                + " §7через античит (" + finalReason + ")");
+                                + " §7(" + durationText + ", " + reason + ")");
                     }
                 }
                 break;
+            case "unban":
+                if (args.length < 2) {
+                    sender.sendMessage("§eИспользование: /ac unban <ник>");
+                    return true;
+                }
+                boolean unbanned = banManager.unban(args[1]);
+                sender.sendMessage(unbanned
+                        ? "§a" + args[1] + " §fразбанен."
+                        : "§c" + args[1] + " §fне найден в списке банов.");
+                break;
             default:
-                sender.sendMessage("§eИспользование: /ac <reload|violations|ban>");
+                sender.sendMessage("§eИспользование: /ac <reload|violations|ban|unban>");
         }
         return true;
     }
