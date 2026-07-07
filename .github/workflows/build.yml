@@ -1,27 +1,29 @@
 name: Build Plugin
-
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Build with Maven
+      - name: Build Crates Plugin
         run: mvn -B -f crates-plugin/pom.xml clean package
-
-      - name: Upload jar
+      - name: Build AntiCheat Plugin
+        run: mvn -B -f limon-anticheat/pom.xml clean package
+      - name: Upload Crates jar
         uses: actions/upload-artifact@v4
         with:
           name: LimonCrates-jar
           path: crates-plugin/target/LimonCrates.jar
+      - name: Upload AntiCheat jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: LimonAntiCheat-jar
+          path: limon-anticheat/target/LimonAntiCheat.jar
