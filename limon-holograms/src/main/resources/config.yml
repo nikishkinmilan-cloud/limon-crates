@@ -1,0 +1,16 @@
+# LimonHolograms config
+
+# Как часто обновлять топы (богачи/PvP) в секундах
+leaderboard-update-interval-seconds: 30
+
+# Сколько игроков показывать в топе
+leaderboard-size: 10
+
+richest-title: "&6&l💰 ТОП БОГАЧЕЙ 💰"
+pvp-title: "&c&l⚔ ТОП PVP ⚔"
+
+# Формат одной строки топа: %rank%, %player%, %value%
+richest-line-format: "&e#%rank% &f%player% &7- &6%value%"
+pvp-line-format: "&e#%rank% &f%player% &7- &c%value% убийств"
+
+empty-line-format: "&8#%rank% &7- пусто -"

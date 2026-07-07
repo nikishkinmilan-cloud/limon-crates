@@ -1,0 +1,14 @@
+name: LimonHolograms
+version: 1.0.0
+main: com.limonanarchy.holograms.HologramsPlugin
+api-version: '1.21'
+author: LimonAnarchy
+softdepend: [Vault]
+commands:
+  holo:
+    description: Управление голограммами
+    permission: holograms.admin
+    usage: /holo <create|remove|list|addline|movehere|leaderboard>
+permissions:
+  holograms.admin:
+    default: op
