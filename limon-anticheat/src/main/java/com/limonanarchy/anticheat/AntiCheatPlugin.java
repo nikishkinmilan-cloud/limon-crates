@@ -1,166 +1,133 @@
-package com.limonanarchy.anticheat;
+# LimonAntiCheat config
 
-import com.limonanarchy.anticheat.bans.BanEntry;
-import com.limonanarchy.anticheat.bans.BanLoginListener;
-import com.limonanarchy.anticheat.bans.BanManager;
-import com.limonanarchy.anticheat.checks.AutoClickerCheck;
-import com.limonanarchy.anticheat.checks.CombatCheck;
-import com.limonanarchy.anticheat.checks.ExemptionListener;
-import com.limonanarchy.anticheat.checks.FlyCheck;
-import com.limonanarchy.anticheat.checks.NoFallCheck;
-import com.limonanarchy.anticheat.checks.NoSlowCheck;
-import com.limonanarchy.anticheat.checks.ScaffoldCheck;
-import com.limonanarchy.anticheat.checks.SpeedCheck;
-import com.limonanarchy.anticheat.commands.ReportCommand;
-import com.limonanarchy.anticheat.commands.ReportsCommand;
-import com.limonanarchy.anticheat.commands.SpecCommand;
-import com.limonanarchy.anticheat.reports.ReportManager;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.plugin.java.JavaPlugin;
+fly:
+  enabled: true
+  # сколько тиков подряд игрок может находиться в воздухе без падения, прежде чем это подозрительно
+  max-air-time-ticks: 40
+  # штраф за нарушение
+  violation-weight: 1
 
-public class AntiCheatPlugin extends JavaPlugin {
+speed:
+  enabled: true
+  # максимальная горизонтальная скорость блоков/тик при спринте (обычный спринт ~0.28-0.3)
+  max-sprint-speed: 0.42
+  # максимальная скорость при ходьбе
+  max-walk-speed: 0.32
+  violation-weight: 1
 
-    private ViolationManager violationManager;
-    private FlyCheck flyCheck;
-    private SpeedCheck speedCheck;
-    private CombatCheck combatCheck;
-    private NoSlowCheck noSlowCheck;
-    private AutoClickerCheck autoClickerCheck;
-    private ScaffoldCheck scaffoldCheck;
-    private NoFallCheck noFallCheck;
-    private ReportManager reportManager;
-    private BanManager banManager;
+combat:
+  enabled: true
+  # максимальная дистанция удара (ванильный reach ~3.0-3.5, даём небольшой запас на лаг)
+  max-reach: 4.2
+  # максимальный угол (в градусах) между направлением взгляда и целью - killaura часто бьёт "не глядя"
+  max-angle-degrees: 60
+  # окно в миллисекундах, за которое нельзя бить больше одной РАЗНОЙ цели (мульти-аура)
+  multi-target-window-ms: 150
+  # проверять что между игроком и целью нет твёрдого блока (атака сквозь стену)
+  check-line-of-sight: true
+  violation-weight: 2
 
-    @Override
-    public void onEnable() {
-        saveDefaultConfig();
+noslow:
+  enabled: true
+  # макс. скорость при блокировании щитом/еде/натягивании лука (ваниль замедляет игрока)
+  max-speed-while-using-item: 0.22
+  violation-weight: 1
 
-        this.violationManager = new ViolationManager(this);
-        this.reportManager = new ReportManager(this);
-        this.banManager = new BanManager(this);
+autoclicker:
+  enabled: true
+  # человеческий предел CPS (кликов в секунду) на длинной дистанции - выше considered читом
+  max-legit-cps: 14
+  # минимальный разброс интервалов между кликами (мс) - ниже = подозрительно ровный ритм (макрос)
+  min-stddev-ms: 15
+  violation-weight: 2
 
-        this.flyCheck = new FlyCheck(this, violationManager);
-        this.speedCheck = new SpeedCheck(this, violationManager);
-        this.combatCheck = new CombatCheck(this, violationManager);
-        this.noSlowCheck = new NoSlowCheck(this, violationManager);
-        this.autoClickerCheck = new AutoClickerCheck(this, violationManager);
-        this.scaffoldCheck = new ScaffoldCheck(this, violationManager);
-        this.noFallCheck = new NoFallCheck(this, violationManager);
+scaffold:
+  enabled: true
+  # минимальный интервал между установкой блоков (мс) при взгляде вниз
+  min-place-interval-ms: 110
+  # угол наклона камеры вниз (градусы), после которого считаем что игрок строит мост под собой
+  min-pitch-looking-down: 70
+  violation-weight: 1
 
-        getServer().getPluginManager().registerEvents(flyCheck, this);
-        getServer().getPluginManager().registerEvents(speedCheck, this);
-        getServer().getPluginManager().registerEvents(combatCheck, this);
-        getServer().getPluginManager().registerEvents(noSlowCheck, this);
-        getServer().getPluginManager().registerEvents(autoClickerCheck, this);
-        getServer().getPluginManager().registerEvents(scaffoldCheck, this);
-        getServer().getPluginManager().registerEvents(noFallCheck, this);
-        getServer().getPluginManager().registerEvents(new BanLoginListener(banManager), this);
-        getServer().getPluginManager().registerEvents(new ExemptionListener(), this);
+nofall:
+  enabled: true
+  # минимальная высота падения (блоков), после которой урон ОБЯЗАН быть
+  min-fall-distance: 4.0
+  violation-weight: 2
 
-        getCommand("report").setExecutor(new ReportCommand(this, reportManager));
-        getCommand("reports").setExecutor(new ReportsCommand(reportManager));
-        getCommand("spec").setExecutor(new SpecCommand());
+jesus:
+  enabled: true
+  # минимальное горизонтальное перемещение за тик, чтобы засчитать его в счётчик "стоит на воде"
+  min-horizontal-move: 0.02
+  # сколько тиков ПОДРЯД нужно "стоять" на воде, прежде чем флагать (защита от ложных срабатываний на границе воды)
+  min-consecutive-ticks: 12
+  violation-weight: 2
 
-        violationManager.startDecayTask();
+criticals:
+  enabled: true
+  # во сколько раз фактический базовый урон должен превышать "чистый" атрибут атаки, чтобы считать его критом
+  crit-factor-threshold: 1.35
+  violation-weight: 3
 
-        getLogger().info("LimonAntiCheat включен. Проверки: fly=" 
-                + getConfig().getBoolean("fly.enabled") 
-                + ", speed=" + getConfig().getBoolean("speed.enabled"));
-    }
+fastbreak:
+  enabled: true
+  # насколько быстрее ожидаемого времени можно ломать блок, прежде чем это подозрительно (0.5 = вдвое быстрее)
+  leniency-multiplier: 0.5
+  violation-weight: 2
 
-    @Override
-    public void onDisable() {
-        getLogger().info("LimonAntiCheat выключен.");
-    }
+blink:
+  enabled: true
+  # максимальное горизонтальное перемещение (блоков) за один PlayerMoveEvent
+  max-horizontal-distance: 8.0
+  violation-weight: 4
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("anticheat.admin")) {
-            sender.sendMessage("§cУ тебя нет прав на эту команду.");
-            return true;
-        }
+timer:
+  enabled: true
+  # интервал проверки в тиках (20 = раз в секунду)
+  check-interval-ticks: 20
+  # максимум move-событий за один интервал (ваниль ~20/сек, даём запас на лаги/пакет-группировку)
+  max-moves-per-window: 24
+  violation-weight: 3
 
-        if (args.length == 0) {
-            sender.sendMessage("§eИспользование: /ac <reload|violations|ban|unban>");
-            return true;
-        }
+# Совместимость со старыми версиями клиента (через ViaVersion, если установлен).
+# Игроки на старых версиях (1.16.5-1.20) двигаются/атакуют чуть иначе физически,
+# чем актуальная версия сервера - даём им запас, чтобы не ловить ложные срабатывания.
+version-compat:
+  enabled: true
+  # protocol-версия, ниже которой клиент считается "старым" (767 = 1.21)
+  legacy-protocol-threshold: 767
+  # во сколько раз смягчаем пороги speed/noslow/combat для старых клиентов
+  leniency-multiplier: 1.3
 
-        switch (args[0].toLowerCase()) {
-            case "reload":
-                reloadConfig();
-                sender.sendMessage("§aКонфиг LimonAntiCheat перезагружен.");
-                break;
-            case "violations":
-                if (args.length < 2) {
-                    sender.sendMessage("§eИспользование: /ac violations <ник>");
-                    return true;
-                }
-                int level = violationManager.getViolationLevel(args[1]);
-                sender.sendMessage("§eУровень нарушений §f" + args[1] + "§e: §c" + level);
-                break;
-            case "ban":
-                if (args.length < 3) {
-                    sender.sendMessage("§eИспользование: /ac ban <ник> <время> <причина>");
-                    sender.sendMessage("§7Время: §f7d §7(7 дней), §f12h §7(12 часов), §f30m §7(30 минут), §fperm §7(навсегда)");
-                    return true;
-                }
+# что делать при накоплении нарушений
+punishment:
+  # уровень, при котором стафф получает РАННЕЕ уведомление "подозрение в читах"
+  # (до алерта - чтобы успеть зайти /spec и проверить лично)
+  suspicion-threshold: 4
+  # сколько нарушений (violation level) до полноценного алерта персоналу
+  alert-threshold: 8
+  # сколько нарушений до "серьёзного" алерта (мигающий, привлекающий внимание)
+  serious-threshold: 20
+  # ВКЛЮЧАТЬ ЛИ автоматический кик игрока - по умолчанию ВЫКЛЮЧЕНО.
+  # Античит только следит и репортит стаффу, финальное решение - за живым человеком через /spec.
+  # Это и есть подход топовых серверов: софт не наказывает сам, только помогает найти нарушителя.
+  auto-kick-enabled: false
+  kick-threshold: 30
+  # автобан - по умолчанию тоже выключен, банить руками после личной проверки через /spec
+  auto-ban-enabled: false
+  ban-threshold: 50
+  # время в секундах, через которое уровень нарушений постепенно спадает (anti-false-positive)
+  decay-interval-seconds: 45
+  decay-amount: 2
 
-                String targetName = args[1];
-                String durationInput = args[2];
+alerts:
+  # право, которое должно быть у стаффа чтобы видеть алерты
+  permission: anticheat.admin
+  suspicion-message: "&e⚠ &f%player% &7ведёт себя подозрительно &7(&e%check%&7). Проверь: &f/spec %player%"
+  message: "&c[AC] &f%player% &7нарушение: &e%check% &7(уровень: &c%level%&7) &7- &f/spec %player%"
+  serious-message: "&4&l⛔ СЕРЬЁЗНОЕ ПОДОЗРЕНИЕ &c%player% &7(&e%check%&7, уровень &c%level%&7) &f/spec %player% §cСРОЧНО"
 
-                Long expiresAt = banManager.parseDuration(durationInput);
-                if (expiresAt == null) {
-                    sender.sendMessage("§cНекорректный формат времени. Примеры: 7d, 12h, 30m, perm");
-                    return true;
-                }
+# Контакт для апелляций при бане (показывается на экране кика)
+ban-appeal-contact: "Telegram: @Milan4ck3456"
 
-                StringBuilder reasonBuilder = new StringBuilder();
-                for (int i = 3; i < args.length; i++) {
-                    reasonBuilder.append(args[i]).append(" ");
-                }
-                String reason = reasonBuilder.toString().trim();
-                if (reason.isEmpty()) {
-                    reason = "Обнаружен читерский софт (LimonAntiCheat)";
-                }
-
-                banManager.ban(targetName, reason, sender.getName(), expiresAt);
-
-                BanEntry newBan = banManager.getBan(targetName);
-                Player target = Bukkit.getPlayerExact(targetName);
-                if (target != null && newBan != null) {
-                    target.kickPlayer(banManager.buildKickScreen(newBan));
-                }
-
-                String durationText = expiresAt == -1 ? "навсегда" : "до " + banManager.formatDuration(expiresAt - System.currentTimeMillis());
-                sender.sendMessage("§a" + targetName + " §fзабанен (" + durationText + "). §7Причина: " + reason);
-
-                for (Player online : Bukkit.getOnlinePlayers()) {
-                    if (online.hasPermission("anticheat.admin") && !online.equals(sender)) {
-                        online.sendMessage("§c[AC] §f" + sender.getName() + " §7забанил §f" + targetName
-                                + " §7(" + durationText + ", " + reason + ")");
-                    }
-                }
-                break;
-            case "unban":
-                if (args.length < 2) {
-                    sender.sendMessage("§eИспользование: /ac unban <ник>");
-                    return true;
-                }
-                boolean unbanned = banManager.unban(args[1]);
-                sender.sendMessage(unbanned
-                        ? "§a" + args[1] + " §fразбанен."
-                        : "§c" + args[1] + " §fне найден в списке банов.");
-                break;
-            default:
-                sender.sendMessage("§eИспользование: /ac <reload|violations|ban|unban>");
-        }
-        return true;
-    }
-
-    public ViolationManager getViolationManager() {
-        return violationManager;
-    }
-}
+log-to-console: true
