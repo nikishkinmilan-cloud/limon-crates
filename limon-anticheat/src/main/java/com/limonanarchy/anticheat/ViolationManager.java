@@ -1,5 +1,7 @@
 package com.limonanarchy.anticheat;
 
+import com.limonanarchy.anticheat.bans.BanEntry;
+import com.limonanarchy.anticheat.bans.BanManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -8,21 +10,27 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 /**
- * Философия: античит НЕ наказывает игроков сам по себе (это даёт слишком много ложных
- * банов из-за лагов/двух аккаунтов в одной сети/плохого интернета). Вместо этого он
- * копит статистику подозрительного поведения и репортит живому стаффу, который
- * сам принимает решение через /spec. Именно так работают топовые анархии -
- * софт помогает найти нарушителя, а не банит вслепую.
+ * Философия: по умолчанию (auto-ban-enabled: false) античит НЕ наказывает игроков сам -
+ * это даёт слишком много ложных банов из-за лагов/плохого интернета. Вместо этого он
+ * копит статистику подозрительного поведения и репортит живому стаффу, который сам
+ * принимает решение через /spec.
+ *
+ * Если auto-ban-enabled: true (как сейчас настроено в config.yml) - при достижении
+ * ban-threshold суммарных нарушений (по ВСЕМ проверкам сразу) плагин банит игрока САМ,
+ * через свою собственную систему банов (BanManager -> bans.yml), точно так же, как если
+ * бы стафф вручную выполнил /ac ban.
  */
 public class ViolationManager {
 
     private final AntiCheatPlugin plugin;
+    private final BanManager banManager;
     private final Map<String, Integer> violations = new ConcurrentHashMap<>();
     // чтобы не спамить одно и то же уведомление каждый тик - шлём раз за уровень, пока не сбросится
     private final Map<String, Integer> lastNotifiedLevel = new ConcurrentHashMap<>();
 
-    public ViolationManager(AntiCheatPlugin plugin) {
+    public ViolationManager(AntiCheatPlugin plugin, BanManager banManager) {
         this.plugin = plugin;
+        this.banManager = banManager;
     }
 
     public void flag(Player player, String checkName, int weight) {
@@ -55,18 +63,13 @@ public class ViolationManager {
             lastNotifiedLevel.put(key, newLevel);
         }
 
-        // Автонаказания - ВЫКЛЮЧЕНЫ по умолчанию, только если явно включены в конфиге.
-        // По умолчанию решение всегда принимает живой человек через /spec + /ac ban.
         boolean autoKick = plugin.getConfig().getBoolean("punishment.auto-kick-enabled", false);
         boolean autoBan = plugin.getConfig().getBoolean("punishment.auto-ban-enabled", false);
         int kickThreshold = plugin.getConfig().getInt("punishment.kick-threshold", 30);
         int banThreshold = plugin.getConfig().getInt("punishment.ban-threshold", 50);
 
         if (autoBan && newLevel >= banThreshold) {
-            Bukkit.getScheduler().runTask(plugin, () ->
-                    player.kickPlayer("§cВы были заблокированы античитом. Обратитесь к администрации."));
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                    "ban " + player.getName() + " Автобан античитом (" + checkName + ")");
+            autoBanPlayer(player, checkName, newLevel);
             violations.remove(key);
             lastNotifiedLevel.remove(key);
         } else if (autoKick && newLevel >= kickThreshold) {
@@ -74,6 +77,36 @@ public class ViolationManager {
                     player.kickPlayer("§cПодозрительная активность обнаружена (" + checkName + "). Перезайдите на сервер."));
             violations.put(key, kickThreshold / 2);
         }
+    }
+
+    /**
+     * Настоящий бан через встроенную систему плагина (bans.yml) - тот же механизм,
+     * что и ручной /ac ban. Записывается в бан-лист, показывается фирменный экран кика
+     * при попытке зайти повторно, и уведомляется онлайн-стафф.
+     */
+    private void autoBanPlayer(Player player, String checkName, int level) {
+        String durationInput = plugin.getConfig().getString("punishment.auto-ban-duration", "perm");
+        Long expiresAt = banManager.parseDuration(durationInput);
+        if (expiresAt == null) {
+            expiresAt = -1L; // некорректный формат в конфиге - баним навсегда, чтобы не пропустить читера
+        }
+
+        String reason = "Автобан LimonAntiCheat: " + checkName + " (уровень нарушений " + level + ")";
+        banManager.ban(player.getName(), reason, "LimonAntiCheat", expiresAt);
+
+        BanEntry entry = banManager.getBan(player.getName());
+        String kickScreen = entry != null
+                ? banManager.buildKickScreen(entry)
+                : "§4§lВы забанены LimonAntiCheat.\n§7Причина: §f" + reason;
+
+        Bukkit.getScheduler().runTask(plugin, () -> player.kickPlayer(kickScreen));
+
+        String permission = plugin.getConfig().getString("alerts.permission", "anticheat.admin");
+        String staffMessage = ("§4§l⛔ АВТОБАН §c" + player.getName() + " §7(&e" + checkName
+                + "&7, уровень &c" + level + "&7) - решение принял сам античит").replace('&', '§');
+
+        broadcast(permission, staffMessage);
+        Bukkit.getConsoleSender().sendMessage(staffMessage);
     }
 
     private void broadcastSuspicion(Player player, String checkName) {

@@ -16,10 +16,14 @@ import com.limonanarchy.anticheat.checks.NoSlowCheck;
 import com.limonanarchy.anticheat.checks.ScaffoldCheck;
 import com.limonanarchy.anticheat.checks.SpeedCheck;
 import com.limonanarchy.anticheat.checks.TimerCheck;
+import com.limonanarchy.anticheat.commands.ACProvCommand;
 import com.limonanarchy.anticheat.commands.ReportCommand;
 import com.limonanarchy.anticheat.commands.ReportsCommand;
 import com.limonanarchy.anticheat.commands.SpecCommand;
 import com.limonanarchy.anticheat.reports.ReportManager;
+import com.limonanarchy.anticheat.review.ReviewChatListener;
+import com.limonanarchy.anticheat.review.ReviewListener;
+import com.limonanarchy.anticheat.review.ReviewManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.command.Command;
@@ -43,14 +47,18 @@ public class AntiCheatPlugin extends JavaPlugin {
     private TimerCheck timerCheck;
     private ReportManager reportManager;
     private BanManager banManager;
+    private ReviewManager reviewManager;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        this.violationManager = new ViolationManager(this);
-        this.reportManager = new ReportManager(this);
+        // BanManager и ReviewManager создаются ПЕРВЫМИ - ViolationManager нужен BanManager
+        // для автобана, а ReviewManager используется командой /acprov независимо от них.
         this.banManager = new BanManager(this);
+        this.violationManager = new ViolationManager(this, banManager);
+        this.reportManager = new ReportManager(this);
+        this.reviewManager = new ReviewManager(this);
 
         this.flyCheck = new FlyCheck(this, violationManager);
         this.speedCheck = new SpeedCheck(this, violationManager);
@@ -79,18 +87,23 @@ public class AntiCheatPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(timerCheck, this);
         getServer().getPluginManager().registerEvents(new BanLoginListener(banManager), this);
         getServer().getPluginManager().registerEvents(new ExemptionListener(), this);
+        getServer().getPluginManager().registerEvents(new ReviewListener(this, reviewManager), this);
+        getServer().getPluginManager().registerEvents(new ReviewChatListener(this, reviewManager), this);
 
         timerCheck.startCheckTask();
 
         getCommand("report").setExecutor(new ReportCommand(this, reportManager));
         getCommand("reports").setExecutor(new ReportsCommand(reportManager));
         getCommand("spec").setExecutor(new SpecCommand());
+        getCommand("acprov").setExecutor(new ACProvCommand(reviewManager));
 
         violationManager.startDecayTask();
 
         getLogger().info("LimonAntiCheat включен. Проверки: fly=" 
                 + getConfig().getBoolean("fly.enabled") 
-                + ", speed=" + getConfig().getBoolean("speed.enabled"));
+                + ", speed=" + getConfig().getBoolean("speed.enabled")
+                + ", auto-ban=" + getConfig().getBoolean("punishment.auto-ban-enabled")
+                + " (порог=" + getConfig().getInt("punishment.ban-threshold") + ")");
     }
 
     @Override
