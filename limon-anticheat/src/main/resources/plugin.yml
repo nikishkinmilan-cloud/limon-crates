@@ -22,6 +22,10 @@ commands:
     description: Спектейтор-слежка за игроком
     permission: spec.use
     usage: /spec <ник|off>
+  acprov:
+    description: Вызвать игрока на проверку через AnyDesk (телепорт в камеру)
+    permission: anticheat.admin
+    usage: /acprov <ник|setroom> [off|target|reviewer]
 permissions:
   anticheat.admin:
     default: op
