@@ -1,0 +1,43 @@
+# ============================================
+#  LimonSpheres — общие настройки
+# ============================================
+
+# Слот ношения сферы: 40 = офф-рука (левая рука), как на HolyWorld
+sphere-slot: 40
+
+# Как часто (в тиках) обновлять активные эффекты у игроков с сферой в офф-руке
+effect-tick-interval: 40
+
+# Переплавка сфер в печи на осколки
+smelting:
+  enabled: true
+  shards:
+    NORMAL: 2
+    EPIC: 4
+    LEGENDARY: 7
+    MYTHIC: 12
+
+# Улучшение сфер в наковальне (объединение двух сфер одного типа и уровня)
+anvil-upgrade:
+  enabled: true
+  # шанс успешного улучшения в %, при неудаче обе сферы сгорают
+  success-chance:
+    NORMAL_TO_EPIC: 65
+    EPIC_TO_LEGENDARY: 45
+  # стоимость в опыте (уровнях), как на HW наковальня
+  xp-cost:
+    NORMAL_TO_EPIC: 20
+    EPIC_TO_LEGENDARY: 35
+
+# Крафт мифической сферы: EPIC (по урону) + LEGENDARY (по броне и т.д.) в наковальне
+mythic-craft:
+  enabled: true
+  xp-cost: 50
+
+# Сферомант — обмен осколков на сферы
+spheromant:
+  gui-title: "&5&lСферомант"
+  prices:
+    NORMAL: 15
+    EPIC: 40
+    LEGENDARY: 90

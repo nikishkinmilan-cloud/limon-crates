@@ -1,0 +1,32 @@
+name: LimonSpheres
+version: '1.0.0'
+main: com.limonanarchy.spheres.LimonSpheresPlugin
+api-version: '1.21'
+author: LimonAnarchy
+description: Система сфер и талисманов для Limon Anarchy (по мотивам HolyWorld)
+
+commands:
+  givesphere:
+    description: Выдать игроку сферу указанного типа и уровня
+    usage: "/givesphere <ник> <тип> <уровень>"
+    permission: limonspheres.give
+  givesphereshard:
+    description: Выдать игроку осколки сфер
+    usage: "/givesphereshard <ник> <кол-во>"
+    permission: limonspheres.give
+  spheromant:
+    description: Открыть меню обмена осколков на сферы (Сферомант)
+    usage: "/spheromant"
+    permission: limonspheres.use
+  spheres:
+    description: Информация о сферах / перезагрузка конфига
+    usage: "/spheres reload"
+    permission: limonspheres.admin
+
+permissions:
+  limonspheres.give:
+    default: op
+  limonspheres.admin:
+    default: op
+  limonspheres.use:
+    default: true
