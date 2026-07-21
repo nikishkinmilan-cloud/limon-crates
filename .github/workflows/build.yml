@@ -19,6 +19,8 @@ jobs:
         run: mvn -B -f limon-anticheat/pom.xml clean package
       - name: Build Holograms Plugin
         run: mvn -B -f limon-holograms/pom.xml clean package
+      - name: Build Spheres Plugin
+        run: mvn -B -f limon-spheres/pom.xml clean package
       - name: Upload Crates jar
         uses: actions/upload-artifact@v4
         with:
@@ -34,3 +36,8 @@ jobs:
         with:
           name: LimonHolograms-jar
           path: limon-holograms/target/LimonHolograms.jar
+      - name: Upload Spheres jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: LimonSpheres-jar
+          path: limon-spheres/target/LimonSpheres.jar
