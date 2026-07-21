@@ -51,8 +51,6 @@ public class SphereItemFactory {
 
         StringBuilder nameParts = new StringBuilder();
         List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GRAY + "Сфера " + tier.colored());
-        lore.add("");
 
         String texture = null;
         for (Map.Entry<String, Integer> e : entries.entrySet()) {
@@ -60,15 +58,14 @@ public class SphereItemFactory {
             if (typeData == null) continue;
             if (texture == null) texture = typeData.getTexture();
 
-            int amplifier = typeData.getAmplifier(e.getValue());
-            lore.add(ChatColor.YELLOW + typeData.getDisplay() + " " + toRoman(e.getValue())
-                    + ChatColor.DARK_GRAY + " (" + typeData.getEffectType().getName() + " " + (amplifier + 1) + ")");
+            lore.add(ChatColor.GRAY + "• " + ChatColor.WHITE + typeData.getDisplay() + " " + toRoman(e.getValue()));
 
             if (nameParts.length() > 0) nameParts.append(ChatColor.GRAY).append(" + ").append(ChatColor.RESET);
             nameParts.append(typeData.getDisplay());
         }
 
-        meta.setDisplayName(tier.getColor() + "Сфера: " + ChatColor.RESET + nameParts);
+        meta.setDisplayName(tier.getColor() + ChatColor.BOLD.toString() + "Сфера: " + nameParts
+                + ChatColor.RESET + tier.getColor() + " (" + tier.getDisplay() + ")");
         meta.setLore(lore);
 
         applyTexture(meta, texture);
